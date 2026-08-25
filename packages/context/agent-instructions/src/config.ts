@@ -9,7 +9,7 @@ import z from '@deepseek-ai/schemastery'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 
 const DEFAULT_PROJECT_ROOT_MARKERS = ['.git'] as const
-const DEFAULT_INSTRUCTION_FILE_CANDIDATES = ['AGENTS.md', 'CLAUDE.md'] as const
+const DEFAULT_INSTRUCTION_FILE_CANDIDATES = ['AGENTS.md', 'CLAUDE.md', 'MEMORY.md'] as const
 const DEFAULT_LOCAL_INSTRUCTION_FILE_CANDIDATES = ['AGENTS.local.md', 'CLAUDE.local.md'] as const
 const DEFAULT_MAX_SOURCE_BYTES = 1_048_576
 const RESERVED_PATH_SEGMENTS = new Set(['', '.', '..'])
@@ -27,6 +27,9 @@ export interface Config {
   /**
    * Ordered same-directory project candidates; every existing file loads, with
    * per-directory trimmed-content duplicates collapsed to the earliest candidate.
+   * The default order is `AGENTS.md`, `CLAUDE.md`, then `MEMORY.md` (project
+   * memory appended by the `/memory` command) so durable notes load after the
+   * standing project rules.
    */
   instructionFileCandidates?: string[]
   /**

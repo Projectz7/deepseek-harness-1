@@ -1,0 +1,3 @@
+name: Autônomo
+description: Agente autônomo sem confirmações — usa ferramentas, MCP e skills automaticamente e continua após erros sem pedir aprovação. Para tarefas de refatoração, bootstrap e fluxos multi-etapas.
+order: 10

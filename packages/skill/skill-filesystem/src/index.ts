@@ -490,7 +490,7 @@ class SkillWatchManager {
       // this provider's effect explicitly closes every handle at teardown.
       persistent: true,
       ignoreInitial: true,
-      depth: 1,
+      depth: 10,
       followSymlinks: this.config.followSymlinks,
       atomic: true,
       awaitWriteFinish: {
@@ -668,19 +668,18 @@ function isRelevantWatchEvent(
     if (event === 'addDir' || event === 'unlinkDir') return true
     return segments[0]?.endsWith('.md') === true
   }
-  return segments.length === 2
-    && segments[1] === 'SKILL.md'
+  // Recursive SKILL.md at any depth: **/SKILL.md
+  return segments[segments.length - 1] === 'SKILL.md'
     && event !== 'addDir'
     && event !== 'unlinkDir'
 }
 
 function isPotentialSkillPath(root: SkillRoot, path: string): boolean {
   const segments = containedSegments(root.path, path)
-  if (segments === undefined || segments.length === 0 || segments.length > 2) return false
+  if (segments === undefined || segments.length === 0) return false
   if (root.skipSystem === true && segments[0] === '.system') return false
-  return segments.length === 1
-    ? segments[0]?.endsWith('.md') === true
-    : segments[1] === 'SKILL.md'
+  if (segments.length === 1) return segments[0]?.endsWith('.md') === true
+  return segments[segments.length - 1] === 'SKILL.md'
 }
 
 function containedSegments(root: string, path: string): string[] | undefined {
@@ -718,15 +717,10 @@ function hasErrorCode(error: unknown, code: string): boolean {
 
 async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Promise<SkillCandidate[]> {
   const skills: SkillCandidate[] = []
-  const entries = await listSkillRootEntries(root, ctx)
-  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
-    if (root.skipSystem && entry.name === '.system') continue
-    const locator = entry.type === 'directory'
-      ? { path: join(entry.path, 'SKILL.md'), directory: entry.path }
-      : entry.type === 'file' && entry.name.endsWith('.md')
-        ? { path: entry.path, directory: root.path }
-        : undefined
-    if (locator === undefined) continue
+  const locators = await collectSkillLocators(root, ctx)
+  // Sort locators by path for deterministic order, preserving rank
+  locators.sort((a, b) => a.path.localeCompare(b.path))
+  for (const locator of locators) {
     const parsed = await parseSkillFile(locator.path, ctx, undefined, root.trustedHost === true)
     if (parsed === undefined) continue
     skills.push({
@@ -744,6 +738,69 @@ async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Pr
     })
   }
   return skills
+}
+
+async function collectSkillLocators(root: SkillRoot, ctx: Context): Promise<LocalLocator[]> {
+  const locators: LocalLocator[] = []
+  const seen = new Set<string>()
+  // Collect flat .md files at root (original behavior)
+  const entries = await listSkillRootEntries(root, ctx)
+  for (const entry of entries) {
+    if (root.skipSystem && entry.name === '.system') continue
+    if (entry.type === 'file' && entry.name.endsWith('.md')) {
+      const locator = { path: entry.path, directory: root.path }
+      if (!seen.has(locator.path)) {
+        seen.add(locator.path)
+        locators.push(locator)
+      }
+    }
+  }
+  // Recursively find all SKILL.md files at any depth
+  const skillPaths = await findSkillMdRecursive(root.path, root, ctx)
+  for (const skillPath of skillPaths) {
+    const directory = dirname(skillPath)
+    const locator = { path: skillPath, directory }
+    if (!seen.has(locator.path)) {
+      seen.add(locator.path)
+      locators.push(locator)
+    }
+  }
+  return locators
+}
+
+async function findSkillMdRecursive(currentPath: string, root: SkillRoot, ctx: Context): Promise<string[]> {
+  const results: string[] = []
+  const fs = optionalFileSystem(ctx)
+  const useFs = fs !== undefined && root.trustedHost !== true
+  let entries: SkillRootEntry[]
+  try {
+    if (useFs) {
+      entries = (await fsListDir(fs!, currentPath)).map(entryFromFs)
+    } else {
+      const dirEntries = await readdir(currentPath, { withFileTypes: true, encoding: 'utf8' })
+      entries = []
+      for (const entry of dirEntries) {
+        const fullPath = join(currentPath, entry.name)
+        const type = await nodeEntryKind(fullPath, entry, ctx)
+        entries.push({ name: entry.name, type: type ?? 'other', path: fullPath })
+      }
+    }
+  } catch (error) {
+    if (isAbsentSkillPathError(error)) return []
+    throw error
+  }
+  for (const entry of entries) {
+    if (root.skipSystem && entry.name === '.system') continue
+    if (entry.type === 'directory') {
+      // Every directory is a potential skill (SKILL.md inside it); let parseSkillFile decide
+      // if the file is missing (undefined) vs. an unexpected read error (incomplete).
+      results.push(join(entry.path, 'SKILL.md'))
+      // Recurse into subdirectory for **/SKILL.md
+      const nested = await findSkillMdRecursive(entry.path, root, ctx)
+      results.push(...nested)
+    }
+  }
+  return results
 }
 
 async function listSkillRootEntries(root: SkillRoot, ctx: Context): Promise<SkillRootEntry[]> {

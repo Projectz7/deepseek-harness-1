@@ -45,10 +45,8 @@ export const inject = ['shell']
 export interface Config {
   /**
    * Path to a `hooks.json` or a settings file whose `hooks` key holds the config.
-   * Process-level: read once at load, a relative path resolves against the process
-   * launch cwd, so one config applies to the whole process.
-   * TODO(per-session-hook-config): per-session discovery of a project-local
-   * `hooks.json` from each `session/new.cwd`.
+   * Global: read once at load. Per-session: also reads `<session.cwd>/.claude/settings.json`
+   * when a session is active, merging its hooks after the global ones.
    */
   configPath: string
   /**
@@ -140,11 +138,27 @@ export function apply(ctx: Context, config: Config): void {
     payload: unknown,
     opts: { agent?: Agent; turn?: number; readonly signal: AbortSignal },
   ): Promise<MergedHookOutcome> {
-    const groups: MatcherGroup[] = parsed[point] ?? []
-    const outputs: HookOutput[] = []
-    // Run the hook in the agent's session workspace (the `session/new` cwd on the session
-    // header), not the executor or entry-point process's launch dir.
     const workdir = opts.agent?.session.header.cwd
+    // Per-session hooks: merge global config with <workdir>/.claude/settings.json when a session is active
+    const perSessionConfig = (() => {
+      if (workdir === undefined) return {} as ClaudeCodeHookConfig
+      try {
+        const perSessionPath = `${workdir}/.claude/settings.json`
+        const rawPerSession: unknown = JSON.parse(readFileSync(perSessionPath, 'utf8'))
+        const result = parseClaudeCodeConfig(rawPerSession, {
+          ...config.pluginRoot !== undefined ? { pluginRoot: config.pluginRoot } : {},
+          ...(config.projectDir !== undefined ? { projectDir: config.projectDir } : { projectDir: workdir }),
+        })
+        for (const s of result.skipped) {
+          ctx.logger.warn(`hooks-claude-code: skipping unsupported "${s.type}" hook on ${s.event} in per-session config (only command hooks run)`)
+        }
+        return result.config
+      } catch {
+        return {} as ClaudeCodeHookConfig
+      }
+    })()
+    const groups: MatcherGroup[] = [...(parsed[point] ?? []), ...(perSessionConfig[point] ?? [])]
+    const outputs: HookOutput[] = []
     // CLAUDE_PROJECT_DIR: an explicit config value wins; otherwise default it to the session
     // workspace (the same dir the hook runs in).
     const projectDir = config.projectDir ?? workdir

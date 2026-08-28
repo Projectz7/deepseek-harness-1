@@ -545,6 +545,8 @@ export interface PiAiModelProfile {
    * default on its own.
    */
   maxTokens?: number
+  /** Whether this model is free for the current credential; when set, surfaces as a badge in selectors. */
+  free?: boolean
   /**
    * Request modalities this model accepts. Absent — or empty, which describes
    * a model that accepts nothing and so states no answer either — keeps the
@@ -875,6 +877,8 @@ export function resolveRouteModels(request: RouteCatalogRequest): RouteCatalog {
       cost: base?.cost ?? NO_COST,
       contextWindow,
       maxTokens,
+      // free is harness-owned, not a pi-ai Model field — carry it as an extra so adapters can surface it.
+      ...((entry.free ?? (base as unknown as { free?: boolean })?.free) !== undefined ? { free: entry.free ?? (base as unknown as { free?: boolean })?.free } : {}),
       ...resolveModelReasoning(provider, entry, base),
       ...resolveModelCompat(provider, entry, request.compat, base, api),
     }

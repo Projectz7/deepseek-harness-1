@@ -130,6 +130,8 @@ export interface ModelCatalogModel {
   description?: string
   /** Exact-route reasoning metadata when the adapter exposes it. */
   reasoning?: ModelReasoning
+  /** Whether this model is free for the current credential; absent means paid/unknown. */
+  free?: boolean
 }
 
 /** One provider and the models it advertised successfully. */

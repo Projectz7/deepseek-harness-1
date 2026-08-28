@@ -294,6 +294,7 @@ async function buildModelCatalog(ctx: Context): Promise<{
           name: model.name,
           ...model.description === undefined ? {} : { description: model.description },
           ...reasoning === undefined ? {} : { reasoning },
+          ...model.free === undefined ? {} : { free: model.free },
         }
       }))
       const group: ModelProviderGroup = {

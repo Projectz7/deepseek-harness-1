@@ -51,6 +51,8 @@ export interface DeepSeekCatalogModel {
   contextWindow?: number
   /** Per-request output cap for this model; omission falls back to the profile's {@link DeepSeekConnectionOptions.maxTokens}. */
   maxTokens?: number
+  /** Whether this model is free for the current credential; surfaces as a badge in selectors. */
+  free?: boolean
   /** Accepted request modalities; omission is text-only. */
   inputModalities?: ModelModality[]
   /** Total-pixel budget for one deterministic request preview. */
@@ -306,6 +308,7 @@ function modelInfo(provider: string, model: DeepSeekCatalogModel): LlmModelInfo 
     name: model.name ?? model.id,
     ...model.description === undefined ? {} : { description: model.description },
     inputModalities: model.inputModalities ?? ['text'],
+    ...model.free === undefined ? {} : { free: model.free },
   }
 }
 

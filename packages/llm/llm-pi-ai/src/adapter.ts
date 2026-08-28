@@ -274,6 +274,7 @@ export class PiAiAdapter extends LlmAdapter {
         id: model.id,
         name: model.name,
         inputModalities: [...model.input],
+        ...((model as unknown as { free?: boolean }).free !== undefined ? { free: (model as unknown as { free?: boolean }).free } : {}),
       }))
     })
   }
@@ -301,6 +302,7 @@ export class PiAiAdapter extends LlmAdapter {
       id: model,
       name: resolvedModel.name,
       inputModalities: [...resolvedModel.input],
+      ...((resolvedModel as unknown as { free?: boolean }).free !== undefined ? { free: (resolvedModel as unknown as { free?: boolean }).free } : {}),
       context: { contextWindow: resolvedModel.contextWindow },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
       ...reasoningInfo(resolvedModel, defaultLevel),

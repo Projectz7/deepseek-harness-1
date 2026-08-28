@@ -241,6 +241,8 @@ export interface LlmModelInfo {
   description?: string
   /** Accepted request modalities; absent means unknown, while an explicit omission is negative capability. */
   inputModalities?: readonly ModelModality[]
+  /** Whether this model is free for the current credential; absent means unknown/paid. */
+  free?: boolean
 }
 
 /** Provider-owned context capacity for one exact provider/model route. */

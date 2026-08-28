@@ -304,7 +304,7 @@ export function ModelSelect(
                             onClick={() => { choose({ provider: group.id, model: model.id }) }}
                           >
                             <span className={css.optionCopy}>
-                              <span className={css.modelName}>{model.name}</span>
+                              <span className={css.modelName}>{model.name}{model.free && <span className={css.freeBadge}>GRÁTIS</span>}</span>
                               {model.description !== undefined && (
                                 <span className={css.description}>{model.description}</span>
                               )}

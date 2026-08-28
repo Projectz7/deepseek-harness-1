@@ -207,6 +207,20 @@
   white-space: nowrap;
 }
 
+.freeBadge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-success);
+  color: var(--dsw-alias-state-success);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .description {
   overflow: hidden;
   color: var(--dsw-alias-label-tertiary);

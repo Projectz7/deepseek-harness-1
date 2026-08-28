@@ -265,6 +265,7 @@ export class BasicCompactionEngine extends CompactionEngine {
     const policy = resolveTargetPolicy(this.config, target)
     const meter = this.ctx.tokenMeter
     let measurement = meter.measure(agent.session)
+    if (measurement.totalTokens === 0) return null
     switch (trigger) {
       case 'context-overflow':
         break

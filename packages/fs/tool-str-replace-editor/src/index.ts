@@ -292,8 +292,9 @@ async function replaceInFile(
   const offsets = matchOffsets(before, oldValue)
   const offset = offsets[0]
   if (offset === undefined) {
+    const lineCount = before.split('\n').length
     throw new FsError(
-      `No replacement was performed, old_str \`${oldValue}\` did not appear verbatim in ${target.displayPath}.`,
+      `No replacement was performed, old_str \`${oldValue}\` did not appear verbatim in ${target.displayPath} (file has ${lineCount} lines). Hint: use view with line numbers or grep -n to locate the exact whitespace and surrounding context before retrying.`,
       'FS_EDIT_NOT_FOUND',
     )
   }

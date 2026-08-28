@@ -208,4 +208,5 @@ export function apply(ctx: Context, config: Config): void {
   const resolved = resolveConfig(config)
   validateConfig(resolved)
   ctx.terminals.registerBackend(new BashTerminalBackend(ctx, resolved))
+  ctx.logger.info('terminal-bash: PTY backend registered (timeoutMs=' + String(resolved.timeoutMs) + ', autonomous-aware)')
 }

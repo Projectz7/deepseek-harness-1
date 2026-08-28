@@ -202,6 +202,7 @@ export class OpenTelemetrySessionBackend extends SessionTelemetryBackend {
         // batch on the Resource rather than per record: the collector
         // aggregates by Resource, and the id is process-stable anyway.
         'user.id': getOrCreateAnonymousUserId(),
+        'dsh.preset.autonomous': 'true',
       }),
       processors: [
         new BatchLogRecordProcessor({

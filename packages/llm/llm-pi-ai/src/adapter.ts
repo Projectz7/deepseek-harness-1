@@ -61,6 +61,21 @@ import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { toPiContext } from './context.ts'
 import { toStreamChunks } from './stream.ts'
 
+const STATIC_FREE_IDS: ReadonlySet<string> = new Set([
+  'nemotron-4-340b-instruct',
+  'nvidia/nemotron-4-340b-instruct',
+  'deepseek-chat',
+  'deepseek-reasoner',
+])
+
+function isStaticallyFree(id: string): boolean | undefined {
+  if (STATIC_FREE_IDS.has(id)) return true
+  const lower = id.toLowerCase()
+  if (lower.includes('nemotron') && (lower.includes('340b') || lower.includes('550b'))) return true
+  if (lower.startsWith('deepseek-') && (lower.includes('chat') || lower.includes('v3') || lower.includes('r1'))) return true
+  return undefined
+}
+
 /** One resolution's frozen view: the profiles and the collection built from them. */
 interface PiAiSnapshot {
   /** The resolved profiles this collection was built from, used as its identity. */
@@ -269,13 +284,17 @@ export class PiAiAdapter extends LlmAdapter {
     return Promise.resolve().then(() => {
       const snapshot = this.current()
       this.profileOf(snapshot, provider)
-      return snapshot.models.getModels(provider).map(model => ({
-        provider,
-        id: model.id,
-        name: model.name,
-        inputModalities: [...model.input],
-        ...((model as unknown as { free?: boolean }).free !== undefined ? { free: (model as unknown as { free?: boolean }).free } : {}),
-      }))
+      return snapshot.models.getModels(provider).map((model) => {
+        const freeExplicit = (model as unknown as { free?: boolean }).free
+        const free = freeExplicit ?? isStaticallyFree(model.id)
+        return {
+          provider,
+          id: model.id,
+          name: model.name,
+          inputModalities: [...model.input],
+          ...free === undefined ? {} : { free },
+        }
+      })
     })
   }
 
@@ -297,12 +316,14 @@ export class PiAiAdapter extends LlmAdapter {
     // Only a cap the deployment configured is a request default; the
     // catalog's `maxTokens` sizes the model and stops there.
     const configuredMaxTokens = profile.configuredMaxTokens.get(model)
+    const freeExplicit = (resolvedModel as unknown as { free?: boolean }).free
+    const free = freeExplicit ?? isStaticallyFree(resolvedModel.id)
     return {
       provider,
       id: model,
       name: resolvedModel.name,
       inputModalities: [...resolvedModel.input],
-      ...((resolvedModel as unknown as { free?: boolean }).free !== undefined ? { free: (resolvedModel as unknown as { free?: boolean }).free } : {}),
+      ...free === undefined ? {} : { free },
       context: { contextWindow: resolvedModel.contextWindow },
       ...configuredMaxTokens === undefined ? {} : { defaultMaxTokens: configuredMaxTokens },
       ...reasoningInfo(resolvedModel, defaultLevel),

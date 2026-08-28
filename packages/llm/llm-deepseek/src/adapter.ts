@@ -301,14 +301,30 @@ function normalizedImageDiagnostic(
     + 'The provider rejected bytes already normalized by the harness; PNG, JPEG, WebP, and GIF remain supported input formats.'
 }
 
+const STATIC_FREE_IDS: ReadonlySet<string> = new Set([
+  'deepseek-chat',
+  'deepseek-reasoner',
+  'deepseek-v3',
+  'deepseek-r1',
+  'deepseek-coder',
+])
+
+function isStaticallyFree(id: string): boolean | undefined {
+  if (STATIC_FREE_IDS.has(id)) return true
+  const lower = id.toLowerCase()
+  if (lower.includes('deepseek') && (lower.includes('chat') || lower.includes('v3') || lower.includes('r1') || lower.includes('coder'))) return true
+  return undefined
+}
+
 function modelInfo(provider: string, model: DeepSeekCatalogModel): LlmModelInfo {
+  const free = model.free ?? isStaticallyFree(model.id)
   return {
     provider,
     id: model.id,
     name: model.name ?? model.id,
     ...model.description === undefined ? {} : { description: model.description },
     inputModalities: model.inputModalities ?? ['text'],
-    ...model.free === undefined ? {} : { free: model.free },
+    ...free === undefined ? {} : { free },
   }
 }
 

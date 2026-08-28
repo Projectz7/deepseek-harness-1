@@ -40,6 +40,29 @@ const LISTABLE_PROTOCOLS: ReadonlySet<string> = new Set([
   'openai-responses',
 ])
 
+const DISCOVERY_CACHE_TTL_MS = 5 * 60 * 1000
+const discoveryCache = new Map<string, { at: number; models: readonly LlmDiscoveredModel[] }>()
+
+const STATIC_FREE_IDS: ReadonlySet<string> = new Set([
+  'nemotron-4-340b-instruct',
+  'nemotron-4-340b-reward',
+  'nvidia/nemotron-4-340b-instruct',
+  'nvidia/nemotron-4-340b-reward',
+  'deepseek-chat',
+  'deepseek-reasoner',
+  'deepseek-v3',
+  'deepseek-r1',
+  'deepseek-coder',
+])
+
+function isStaticallyFree(id: string): boolean | undefined {
+  if (STATIC_FREE_IDS.has(id)) return true
+  const lower = id.toLowerCase()
+  if (lower.includes('nemotron') && (lower.includes('340b') || lower.includes('550b') || lower.includes('4-'))) return true
+  if (lower.startsWith('deepseek-') && (lower.includes('chat') || lower.includes('v3') || lower.includes('r1') || lower.includes('coder'))) return true
+  return undefined
+}
+
 /**
  * Endpoint replies larger than this are refused. The endpoint is whatever URL
  * the user typed, so the ceiling holds on the bytes actually read rather than
@@ -59,6 +82,48 @@ interface ListingEntry {
   context_length?: unknown
   max_tokens?: unknown
   max_output_tokens?: unknown
+  pricing?: unknown
+  cost?: unknown
+  price?: unknown
+  free?: unknown
+  is_free?: unknown
+  isFree?: unknown
+  pricing_type?: unknown
+}
+
+/**
+ * Whether one listing entry is free, inferred from gateway pricing metadata.
+ * Gateways differ: Nvidia Integrate returns zero pricing, some return `free:true`,
+ * others carry `pricing_type: free`. Every numeric price is treated as free only
+ * when it is exactly zero; any positive value means paid.
+ * @param entry - raw listing entry.
+ * @returns `true` when the entry is detectably free, otherwise `undefined` (unknown/paid).
+ */
+function inferFree(entry: ListingEntry): boolean | undefined {
+  if (entry.free === true || entry.is_free === true || entry.isFree === true) return true
+  if (typeof entry.pricing_type === 'string' && entry.pricing_type.toLowerCase() === 'free') return true
+  if (entry.cost === 0 || entry.cost === '0' || entry.price === 0 || entry.price === '0') return true
+  const pricing = entry.pricing
+  if (pricing !== null && typeof pricing === 'object') {
+    const values: unknown[] = []
+    for (const v of Object.values(pricing as Record<string, unknown>)) {
+      if (v !== null && typeof v === 'object') {
+        for (const inner of Object.values(v as Record<string, unknown>)) values.push(inner)
+      } else values.push(v)
+    }
+    if (values.length > 0) {
+      let hasNumeric = false
+      for (const v of values) {
+        if (typeof v === 'number' || (typeof v === 'string' && /^\d+(\.\d+)?$/.test(v))) {
+          hasNumeric = true
+          const n = typeof v === 'number' ? v : Number(v)
+          if (!(Number.isFinite(n) && n === 0)) return undefined
+        }
+      }
+      if (hasNumeric) return true
+    }
+  }
+  return undefined
 }
 
 /** A positive integer field of a listing entry, or `undefined` when absent or unusable. */
@@ -151,11 +216,15 @@ function readListing(body: unknown): LlmDiscoveredModel[] {
     const name = label(entry?.name, entry?.display_name)
     const contextWindow = capacity(entry?.context_window, entry?.context_length)
     const maxTokens = capacity(entry?.max_output_tokens, entry?.max_tokens)
+    const freeInferred = entry === null ? undefined : inferFree(entry)
+    const freeStatic = isStaticallyFree(id)
+    const free = freeInferred ?? freeStatic
     models.push({
       id,
       ...name === undefined ? {} : { name },
       ...contextWindow === undefined ? {} : { contextWindow },
       ...maxTokens === undefined ? {} : { maxTokens },
+      ...free === undefined ? {} : { free },
     })
   }
   return models
@@ -201,12 +270,18 @@ export async function discoverModels(
   if (request.provider !== undefined) {
     const installed = catalogModels(request.provider)
     if (installed.size > 0) {
-      return [...installed.values()].map(model => ({
-        id: model.id,
-        name: model.name,
-        contextWindow: model.contextWindow,
-        maxTokens: model.maxTokens,
-      }))
+      return [...installed.values()].map((model) => {
+        const freeFromCatalog = (model as unknown as { free?: boolean }).free
+        const freeStatic = isStaticallyFree(model.id)
+        const free = freeFromCatalog ?? freeStatic
+        return {
+          id: model.id,
+          name: model.name,
+          contextWindow: model.contextWindow,
+          maxTokens: model.maxTokens,
+          ...free === undefined ? {} : { free },
+        }
+      })
     }
   }
   if (request.baseURL === undefined || request.baseURL.length === 0) {
@@ -229,7 +304,6 @@ export async function discoverModels(
       'DISCOVERY_UNSUPPORTED',
     )
   }
-  const url = listingUrl(request.baseURL)
   // A key typed into the form wins: it is the one the user is testing, and it
   // may be the replacement for exactly the stored key that is failing. The
   // stored one is only asked for here, past the catalog short-circuit and the
@@ -239,6 +313,10 @@ export async function discoverModels(
   // relies on the provider's own ambient discovery is meant to be asked.
   const supplied = request.apiKey ?? await storedApiKey?.()
   const apiKey = supplied === undefined ? undefined : usableProbeKey(supplied)
+  const cacheKey = `${request.provider ?? ''}::${request.baseURL}::${api}::${apiKey ?? ''}`
+  const cached = discoveryCache.get(cacheKey)
+  if (cached !== undefined && Date.now() - cached.at < DISCOVERY_CACHE_TTL_MS) return cached.models
+  const url = listingUrl(request.baseURL)
   let response: Response
   try {
     response = await fetch(url, {
@@ -280,5 +358,7 @@ export async function discoverModels(
   } catch (error: unknown) {
     throw new LlmError(`${url} did not answer with JSON`, 'DISCOVERY_FAILED', { cause: error })
   }
-  return readListing(body)
+  const models = readListing(body)
+  discoveryCache.set(cacheKey, { at: Date.now(), models })
+  return models
 }

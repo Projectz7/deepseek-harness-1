@@ -300,6 +300,8 @@
     { "path": "./packages/screen/screen-capture" },
     { "path": "./packages/screen/tool-screen" },
     { "path": "./packages/desktop/tool-desktop-control" },
+    { "path": "./packages/browser/browser" },
+    { "path": "./packages/browser/tool-browser" },
     { "path": "./packages/host/apiproxy" },
     { "path": "./packages/host/directory-picker" },
     { "path": "./packages/host/directory-picker-auto" },

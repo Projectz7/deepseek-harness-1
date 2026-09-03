@@ -21,11 +21,41 @@ export function ComposerAttachments({
   const [preview, setPreview] = useState<ComposerAttachment | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const dragDepth = useRef(0)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const closePreview = useCallback(() => { setPreview(null) }, [])
 
   useEffect(() => {
     if (preview !== null && !attachments.some(attachment => attachment.id === preview.id)) setPreview(null)
   }, [attachments, preview])
+
+  useEffect(() => {
+    const onKeyDown = (event: globalThis.KeyboardEvent): void => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'u') {
+        event.preventDefault()
+        if (canAcceptDrop) inputRef.current?.click()
+      }
+    }
+    const onPaste = (event: globalThis.ClipboardEvent): void => {
+      const items = event.clipboardData?.items
+      if (items === undefined || items === null) return
+      const files: File[] = []
+      for (const item of items) {
+        if (item.kind === 'file') {
+          const file = item.getAsFile()
+          if (file !== null) files.push(file)
+        }
+      }
+      if (files.length === 0) return
+      event.preventDefault()
+      if (canAcceptDrop) onAddImages(files)
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('paste', onPaste)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('paste', onPaste)
+    }
+  }, [canAcceptDrop, onAddImages])
 
   useEffect(() => {
     const fileTransfer = (event: globalThis.DragEvent): DataTransfer | null => {
@@ -88,6 +118,18 @@ export function ComposerAttachments({
 
   return (
     <>
+      <input
+        ref={inputRef}
+        type="file"
+        multiple
+        accept="image/*,application/pdf,.txt,.md"
+        style={{ display: 'none' }}
+        onChange={(event) => {
+          const files = event.target.files
+          if (files !== null && files.length > 0 && canAcceptDrop) onAddImages([...files])
+          event.target.value = ''
+        }}
+      />
       {dragActive && (
         <DropOverlay
           disabled={!canAcceptDrop}

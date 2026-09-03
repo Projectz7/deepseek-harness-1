@@ -1000,6 +1000,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      playwright:
+        specifier: ^1.44.0
+        version: 1.61.1
     devDependencies:
       vitest:
         specifier: ^4.0.0
@@ -1016,6 +1019,9 @@ importers:
       '@deepseek-ai/dsh-tools':
         specifier: workspace:^
         version: link:../../core/tools
+      playwright:
+        specifier: ^1.44.0
+        version: 1.61.1
     devDependencies:
       vitest:
         specifier: ^4.0.0
@@ -2574,6 +2580,16 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+
+  packages/client/ui-screen-picker:
+    dependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+    devDependencies:
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.8(@opentelemetry/api@1.9.1)(@types/node@26.1.2)(@vitest/coverage-v8@4.1.8)(jsdom@29.1.1)(vite@8.0.16(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)(yaml@2.9.0))
 
   packages/client/ui-settings:
     dependencies:

@@ -38,6 +38,22 @@ export function apply(ctx: Context, config: Config): void {
       const action = String(a.action)
       const payload = `site_explorer ${action} on ${tab.title} (${tab.url}) selector=${String(a.selector ?? '')} text=${String((a.text as string)?.slice(0,80) ?? '')} url=${String(a.url ?? '')} goal=${String(a.goal ?? '')}`
       ctx.logger.info(payload + ' (autonomous, credential via vault, audit)')
+      const cdpUrl = ctx.browser.getCdpUrl()
+      if (cdpUrl !== null) {
+        try {
+          const { chromium } = await import('playwright')
+          const browser = await chromium.connectOverCDP(cdpUrl)
+          const page = browser.contexts()[0]?.pages()[0]
+          if (page !== undefined) {
+            if (action === 'navigate' && typeof a.url === 'string') { await page.goto(a.url, { waitUntil: 'domcontentloaded' }); return `Navigated to ${a.url} (CDP)` }
+            if (action === 'snapshot') { const snap = await page.content(); return snap.slice(0, maxChars) }
+            if (action === 'source') { const html = await page.content(); return html.slice(0, maxChars) }
+            if (action === 'console') { return `Console: ${JSON.stringify(await page.evaluate(() => (window as unknown as { __dshLogs?: unknown }).__dshLogs ?? []))}` }
+          }
+        } catch (error: unknown) {
+          ctx.logger.warn(`site_explorer CDP action failed: ${String(error)} — falling back to scaffold`)
+        }
+      }
       if (action === 'explore') return `Site Explorer explore of ${tab.url} goal="${String(a.goal ?? 'general')}" (truncated ${maxChars}): forms=[...], links=[...], apis=[...] (requires Playwright CDP attach; scaffold — will crawl AX tree + network)`
       if (action === 'source') return `DOM source of ${tab.url} (truncated ${maxChars}): <html>... (requires Playwright CDP attach; scaffold)`
       if (action === 'console') return `Console logs for ${tab.url}: [] (attach CDP to read)`

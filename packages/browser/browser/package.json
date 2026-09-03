@@ -10,7 +10,7 @@
   "exports": { ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" }, "./package.json": "./package.json" },
   "files": ["lib"],
   "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run", "typecheck": "tsc -b" },
-  "dependencies": { "@deepseek-ai/cordis": "workspace:^" },
+  "dependencies": { "@deepseek-ai/cordis": "workspace:^", "playwright": "^1.44.0" },
   "peerDependencies": { "@deepseek-ai/cordis": "workspace:^" },
   "devDependencies": { "@deepseek-ai/cordis": "workspace:^", "vitest": "^4.0.0" }
 }

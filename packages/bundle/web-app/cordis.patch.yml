@@ -432,6 +432,9 @@
     - id: command-memory
       name: '@deepseek-ai/dsh-command-memory'
 
+    - id: command-plugins
+      name: '@deepseek-ai/dsh-command-plugins'
+
 - insert:
     - id: mcp-auto
       name: '@deepseek-ai/dsh-mcp-auto'

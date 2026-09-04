@@ -143,7 +143,10 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
-  color: var(--dsw-alias-label-primary);
+  /* Explicit fallback colors guarantee visible text even if theme tokens fail
+     to resolve — the textarea is color:transparent and this backdrop is the
+     ONLY layer the user sees. */
+  color: var(--dsw-alias-label-primary, #0f1115);
   pointer-events: none;
 }
 
@@ -195,8 +198,12 @@
   border: none;
   outline: none;
   background: transparent;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
+  /* Show text directly in the textarea so the user can see what they type.
+     The backdrop still renders decorations (highlighted tokens, chips, refs)
+     on top. When no decorations are active the backdrop is empty and the
+     textarea text is the sole visible layer. */
+  color: var(--dsw-alias-label-primary, #0f1115);
+  -webkit-text-fill-color: var(--dsw-alias-label-primary, #0f1115);
   /* Business blue, not brand-primary: that token resolves to ink in this sheet. */
   caret-color: var(--dsw-alias-state-business-primary);
 }

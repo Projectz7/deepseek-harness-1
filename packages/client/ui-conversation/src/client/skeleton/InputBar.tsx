@@ -591,8 +591,11 @@ export function InputBar({
     // overlap: structured references own their ranges, text-refs own plain tokens, the
     // claim token only leads).
     let cursor = 0
+    // Plain text segments are invisible in the backdrop — the textarea itself
+    // shows them.  Empty strings keep the decoration offsets aligned without
+    // double-rendering the draft.
     const pushPlain = (upTo: number): void => {
-      if (upTo > cursor) backdrop.push(draft.slice(cursor, upTo))
+      if (upTo > cursor) backdrop.push('')
       cursor = upTo
     }
     if (deco.token !== null) {

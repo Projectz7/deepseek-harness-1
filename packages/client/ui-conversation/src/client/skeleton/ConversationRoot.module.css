@@ -364,7 +364,10 @@
 }
 
 /* Settling (session replaying, hero/docked unknown): keep the composer seat
-   mounted but invisible so no wrong layout flashes before the phase lands. */
+   mounted and visible so the user can type the next message while the AI
+   processes. The original visibility:hidden caused the input to disappear
+   after sending or on errors. */
 .root[data-phase='settling'] .composerSeat {
-  visibility: hidden;
+  opacity: 0.6;
+  pointer-events: auto;
 }

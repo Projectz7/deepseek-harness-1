@@ -1,8 +1,8 @@
 /**
  * Human-facing `/plugins` command: enable or disable tools at runtime to reduce
  * prompt size for rate-limited APIs (e.g. DeepSeek Free). Disabled tools are
- * denied by a global `tools.guard()` and their schemas are still sent but the
- * model learns fast not to call them.
+ * denied by a global `tools.guard()` AND filtered from the system prompt so
+ * their schemas never reach the LLM — saving tokens and reducing overload.
  *
  * State persists to `~/.dsh/plugins.json`.
  * @module @deepseek-ai/dsh-command-plugins
@@ -247,11 +247,13 @@ function renderList(config: PluginsConfig): CommandResult {
   return { kind: 'success', text: lines.join('\n') }
 }
 
-// ── guard wiring ───────────────────────────────────────────────────────────
+// ── guard + prompt filtering wiring ────────────────────────────────────────
 
 /**
- * Register the `/plugins` command and a global tool guard that denies
- * disabled tools at execution time.
+ * Register the `/plugins` command, a global tool guard that denies
+ * disabled tools at execution time, and a `system-prompt/assemble`
+ * waterfall listener that strips disabled tool schemas from the prompt
+ * so they never reach the LLM — saving tokens and reducing API overload.
  */
 export function apply(ctx: Context): void {
   // Register the command
@@ -263,10 +265,11 @@ export function apply(ctx: Context): void {
       handlePlugins(invocation.rawInput),
   })
 
-  // Register a global tool guard that blocks disabled tools
   const config = loadConfig()
-  if (config.disabled.length > 0) {
-    const disabledSet = new Set(config.disabled)
+  const disabledSet = new Set(config.disabled)
+
+  // 1) Guard: block execution of disabled tools
+  if (disabledSet.size > 0) {
     const guard: ToolGuard = (exec) => {
       if (disabledSet.has(exec.name)) {
         return `Tool "${exec.name}" is disabled. Use /plugins enable ${exec.name} to re-enable it.`
@@ -274,5 +277,15 @@ export function apply(ctx: Context): void {
       return undefined
     }
     ctx.tools.guard(guard)
+  }
+
+  // 2) System prompt: strip disabled tool schemas before they reach the LLM.
+  //    This is the real token saver — without it, ~50K chars of unused schemas
+  //    inflate every API request and trigger DeepSeek Free rate limits.
+  if (disabledSet.size > 0) {
+    ctx.on('system-prompt/assemble', async (assembly, _context, next) => {
+      assembly.tools = assembly.tools.filter(tool => !disabledSet.has(tool.name))
+      return next()
+    })
   }
 }

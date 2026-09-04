@@ -10,8 +10,22 @@
   "exports": { ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" }, "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client/index.js" }, "./package.json": "./package.json" },
   "files": ["lib"],
   "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run", "typecheck": "tsc -b" },
-  "dependencies": { "@deepseek-ai/cordis": "workspace:^" },
-  "peerDependencies": { "@deepseek-ai/cordis": "workspace:^" },
-  "devDependencies": { "@deepseek-ai/cordis": "workspace:^", "vitest": "^4.0.0" },
+  "dependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-invariants": "workspace:^",
+    "@types/react": "~18.3.1",
+    "@types/react-dom": "~18.3.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "vitest": "^4.0.0"
+  },
   "dsh": { "client": { "platform": "web", "inject": [] } }
 }

@@ -1,17 +1,21 @@
 /**
  * Human-facing `/plugins` command: enable or disable tools at runtime to reduce
- * prompt size for rate-limited APIs (e.g. DeepSeek Free). Disabled tools are
- * denied by a global `tools.guard()` AND filtered from the system prompt so
- * their schemas never reach the LLM — saving tokens and reducing overload.
+ * prompt size for rate-limited APIs (e.g. DeepSeek Free), plus on-demand
+ * loading of the Jarvis extensions (screen / browser / desktop) AFTER the
+ * core opens. Extensions never load at boot: each mounts in its own fiber
+ * and a failure is reported as the command result while the app keeps
+ * running (fault isolation).
  *
- * State persists to `~/.dsh/plugins.json`.
+ * Disabled-tool state persists to `~/.dsh/plugins.json`. Loaded extensions
+ * are intentionally NOT persisted: every start opens clean, the user
+ * activates afterwards with `/plugins load`.
  * @module @deepseek-ai/dsh-command-plugins
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import type { Context } from '@deepseek-ai/cordis'
+import type { Context, Plugin } from '@deepseek-ai/cordis'
 import type { CommandInvocation, CommandResult } from '@deepseek-ai/dsh-commands'
 import type { ToolGuard } from '@deepseek-ai/dsh-tools'
 
@@ -106,7 +110,7 @@ const TOOL_GROUPS: Record<string, readonly string[]> = {
 
 // ── command handler ────────────────────────────────────────────────────────
 
-function handlePlugins(rawInput: string): CommandResult {
+function handlePlugins(rawInput: string, live: { disabled: Set<string>; loaded: readonly string[] }): CommandResult {
   const parts = rawInput.trim().split(/\s+/)
   const sub = (parts[0] ?? '').toLowerCase()
   const target = (parts[1] ?? '').toLowerCase()
@@ -115,7 +119,7 @@ function handlePlugins(rawInput: string): CommandResult {
 
   // ── /plugins (no args) or /plugins list ────────────────────────────────
   if (sub === '' || sub === 'list') {
-    return renderList(config)
+    return renderList(config, live.loaded)
   }
 
   // ── /plugins disable <tool> ────────────────────────────────────────────
@@ -128,10 +132,11 @@ function handlePlugins(rawInput: string): CommandResult {
       return { kind: 'success', text: `Tool "${target}" is already disabled.` }
     }
     config.disabled.push(target)
+    live.disabled.add(target)
     saveConfig(config)
     return {
       kind: 'success',
-      text: `Disabled "${target}". Restart the session or type /plugins list to verify.\nReduced prompt size — the API should be more stable.`,
+      text: `Disabled "${target}". Applies immediately; reduced prompt size — the API should be more stable.`,
     }
   }
 
@@ -143,27 +148,29 @@ function handlePlugins(rawInput: string): CommandResult {
       return { kind: 'success', text: `Tool "${target}" is already enabled.` }
     }
     config.disabled.splice(idx, 1)
+    live.disabled.delete(target)
     saveConfig(config)
     return {
       kind: 'success',
-      text: `Enabled "${target}". Restart the session or type /plugins list to verify.`,
+      text: `Enabled "${target}". Applies immediately.`,
     }
   }
 
   // ── /plugins reset ─────────────────────────────────────────────────────
   if (sub === 'reset') {
     saveConfig({ disabled: [] })
-    return { kind: 'success', text: 'All tools re-enabled. Restart the session to apply.' }
+    live.disabled.clear()
+    return { kind: 'success', text: 'All tools re-enabled. Applies immediately.' }
   }
 
   // ── /plugins preset <name> ─────────────────────────────────────────────
   if (sub === 'preset') {
-    return applyPreset(target, config)
+    return applyPreset(target, config, live.disabled)
   }
 
   return {
     kind: 'error',
-    text: `Unknown subcommand "${sub}". Available: list, enable <tool>, disable <tool>, preset <light|standard|minimal>, reset`,
+    text: `Unknown subcommand "${sub}". Available: list, ext, enable <tool>, disable <tool>, load <tela|navegador|desktop|jarvis|id>, unload <...>, preset <light|standard|minimal>, reset`,
   }
 }
 
@@ -212,7 +219,7 @@ const PRESETS: Record<string, readonly string[]> = {
   ],
 }
 
-function applyPreset(name: string, config: PluginsConfig): CommandResult {
+function applyPreset(name: string, config: PluginsConfig, live: Set<string>): CommandResult {
   const disabled = PRESETS[name]
   if (disabled === undefined) {
     return {
@@ -222,16 +229,18 @@ function applyPreset(name: string, config: PluginsConfig): CommandResult {
   }
   config.disabled = [...disabled]
   saveConfig(config)
+  live.clear()
+  for (const tool of disabled) live.add(tool)
   const count = disabled.length
   return {
     kind: 'success',
-    text: `Preset "${name}" applied: ${count} tool${count === 1 ? '' : 's'} disabled. Restart the session to apply.`,
+    text: `Preset "${name}" applied: ${count} tool${count === 1 ? '' : 's'} disabled. Applies immediately.`,
   }
 }
 
 // ── rendering ──────────────────────────────────────────────────────────────
 
-function renderList(config: PluginsConfig): CommandResult {
+function renderList(config: PluginsConfig, loaded: readonly string[]): CommandResult {
   const lines: string[] = ['**Tools status:**\n']
   for (const [group, tools] of Object.entries(TOOL_GROUPS)) {
     lines.push(`**${group}:**`)
@@ -243,7 +252,262 @@ function renderList(config: PluginsConfig): CommandResult {
   }
   lines.push(`**${config.disabled.length}** tool(s) disabled.`)
   lines.push('')
-  lines.push('Commands: `/plugins disable <name>`, `/plugins enable <name>`, `/plugins preset light|standard|minimal`, `/plugins reset`')
+  lines.push(renderExtensionsStatus(loaded))
+  lines.push('')
+  lines.push('Commands: `/plugins disable <name>`, `/plugins enable <name>`, `/plugins preset light|standard|minimal`, `/plugins reset`, `/plugins load <tela|navegador|desktop|jarvis|id>`, `/plugins unload <...>`, `/plugins ext`')
+  return { kind: 'success', text: lines.join('\n') }
+}
+
+// ── lazy extensions (Jarvis senses, mounted after open) ────────────────────
+//
+// These workspace packages are NOT boot rows: the core always opens clean,
+// and the user mounts them afterwards with `/plugins load`. Each mounts in
+// its own fiber; a failure rejects only that fiber and is reported as the
+// command result — the app keeps running (fault isolation).
+
+/** A runtime-mountable extension package. */
+interface ExtensionDef {
+  /** Workspace package specifier, resolved through tsconfig paths at runtime. */
+  spec: string
+  /** 'service' = default-exported Service class; 'tool' = name/inject/apply shape. */
+  kind: 'service' | 'tool'
+  /** Other extension ids mounted first, in order. */
+  deps: readonly string[]
+  /** Config passed to ctx.plugin (mirrors each package's schema defaults). */
+  config: Record<string, unknown>
+  /** Model tool names this extension contributes (auto-enabled on load). */
+  tools: readonly string[]
+  /** One-line description for /plugins ext. */
+  blurb: string
+}
+
+const EXTENSIONS: Record<string, ExtensionDef> = {
+  'screen-capture': {
+    spec: '@deepseek-ai/dsh-screen-capture',
+    kind: 'service',
+    deps: [],
+    config: {},
+    tools: [],
+    blurb: 'shared screen handle (Jarvis eyes)',
+  },
+  'tool-screen': {
+    spec: '@deepseek-ai/dsh-tool-screen',
+    kind: 'tool',
+    deps: ['screen-capture'],
+    config: { maxOutputChars: 8000 },
+    tools: ['screen_capture'],
+    blurb: 'screen_capture model tool',
+  },
+  browser: {
+    spec: '@deepseek-ai/dsh-browser',
+    kind: 'service',
+    deps: [],
+    config: {},
+    tools: [],
+    blurb: 'CDP tab handle (Jarvis hands, browser)',
+  },
+  'tool-browser': {
+    spec: '@deepseek-ai/dsh-tool-browser',
+    kind: 'tool',
+    deps: ['browser'],
+    config: { maxOutputChars: 12000 },
+    tools: ['site_explorer'],
+    blurb: 'site_explorer model tool',
+  },
+  'tool-desktop-control': {
+    spec: '@deepseek-ai/dsh-tool-desktop-control',
+    kind: 'tool',
+    deps: [],
+    config: { enabled: true },
+    tools: ['desktop_control'],
+    blurb: 'desktop_control model tool (gated + audited)',
+  },
+}
+
+/** Named bundles: one word loads a whole sense. */
+const EXTENSION_GROUPS: Record<string, readonly string[]> = {
+  tela: ['screen-capture', 'tool-screen'],
+  navegador: ['browser', 'tool-browser'],
+  desktop: ['tool-desktop-control'],
+  jarvis: ['screen-capture', 'tool-screen', 'browser', 'tool-browser', 'tool-desktop-control'],
+}
+
+/** Model-tool names accepted as load targets, mapped to extension ids. */
+const TOOL_TO_EXTENSION: Record<string, string> = {
+  screen_capture: 'tool-screen',
+  site_explorer: 'tool-browser',
+  desktop_control: 'tool-desktop-control',
+}
+
+/** Live extension fibers, by extension id. Owned by the loader closure. */
+interface LoadedFiber {
+  dispose(): void
+}
+
+/** First line of an error, so one broken extension never floods the chat. */
+function shortError(error: unknown): string {
+  const text = error instanceof Error ? error.message : String(error)
+  return text.split('\n')[0] ?? text
+}
+
+interface ExtensionLoader {
+  load(ids: readonly string[]): Promise<string[]>
+  unload(ids: readonly string[]): Promise<string[]>
+  loadedIds(): string[]
+}
+
+/**
+ * Mount extensions on demand in isolated fibers. Created once in apply();
+ * the fibers are children of the host root, so tools and services register
+ * globally and later prompts pick them up.
+ * @param ctx - host context the extension fibers hang under.
+ * @param disabled - live disabled-tool set; loading auto-enables its tools.
+ */
+function createExtensionLoader(ctx: Context, disabled: Set<string>): ExtensionLoader {
+  const fibers = new Map<string, LoadedFiber>()
+
+  async function loadOne(id: string, lines: string[]): Promise<boolean> {
+    if (fibers.has(id)) {
+      lines.push(`- ${id}: already loaded.`)
+      return true
+    }
+    const def = EXTENSIONS[id]
+    if (def === undefined) {
+      lines.push(`- ${id}: unknown extension.`)
+      return false
+    }
+    for (const dep of def.deps) {
+      if (!(await loadOne(dep, lines))) {
+        lines.push(`- ${id}: skipped (dependency "${dep}" failed).`)
+        return false
+      }
+    }
+    try {
+      const mod = (await import(def.spec)) as Record<string, unknown>
+      if (def.kind === 'service') {
+        if (typeof mod.default !== 'function') {
+          throw new Error(`package ${def.spec} exports no default Service class`)
+        }
+        fibers.set(id, await ctx.plugin(mod.default as Plugin.Constructor))
+      } else {
+        if (typeof mod.apply !== 'function') {
+          throw new Error(`package ${def.spec} exports no apply function`)
+        }
+        const shape: Plugin.Object = {
+          apply: mod.apply as Plugin.Object['apply'],
+        }
+        if (typeof mod.name === 'string') shape.name = mod.name
+        if (mod.inject !== undefined) {
+          shape.inject = mod.inject as Exclude<Plugin.Object['inject'], undefined>
+        }
+        if (mod.Config !== undefined) {
+          shape.Config = mod.Config as Exclude<Plugin.Object['Config'], undefined>
+        }
+        fibers.set(id, await ctx.plugin(shape, { ...def.config }))
+      }
+      lines.push(`- ${id}: loaded.`)
+    } catch (error) {
+      lines.push(`- ${id}: FAILED — ${shortError(error)} (Hermes keeps running.)`)
+      return false
+    }
+    // Loading means wanting: drop its tools from the disabled set (live + persisted).
+    let touched = false
+    for (const tool of def.tools) {
+      if (disabled.delete(tool)) touched = true
+    }
+    if (touched) {
+      saveConfig({ disabled: [...disabled] })
+      lines.push(`  (tools ${def.tools.join(', ')} re-enabled.)`)
+    }
+    return true
+  }
+
+  return {
+    async load(ids: readonly string[]): Promise<string[]> {
+      const lines = ['**Extensions load:**']
+      let ok = true
+      for (const id of ids) {
+        if (!(await loadOne(id, lines))) ok = false
+      }
+      lines.push(ok ? 'Done. The agent can use the new tools from the next turn.' : 'Some extensions failed — see above. Hermes keeps running.')
+      return lines
+    },
+    async unload(ids: readonly string[]): Promise<string[]> {
+      const lines = ['**Extensions unload:**']
+      const seen = new Set<string>()
+      for (const id of ids) {
+        await unloadOne(id, lines, seen)
+      }
+      return lines
+    },
+    loadedIds(): string[] {
+      return [...fibers.keys()]
+    },
+  }
+
+  /** Unload loaded dependents first (depth-first), then the extension itself. */
+  async function unloadOne(id: string, lines: string[], seen: Set<string>): Promise<void> {
+    if (seen.has(id)) return
+    seen.add(id)
+    if (!fibers.has(id)) {
+      lines.push(`- ${id}: not loaded.`)
+      return
+    }
+    for (const other of Object.keys(EXTENSIONS)) {
+      const otherDef = EXTENSIONS[other]
+      if (other !== id && fibers.has(other) && otherDef !== undefined && otherDef.deps.includes(id)) {
+        await unloadOne(other, lines, seen)
+      }
+    }
+    const fiber = fibers.get(id)
+    fibers.delete(id)
+    if (fiber !== undefined) await fiber.dispose()
+    lines.push(`- ${id}: unloaded.`)
+  }
+}
+
+/**
+ * Resolve a load/unload target to extension ids: group alias, extension id,
+ * or model tool name.
+ */
+function resolveExtensionTargets(target: string): readonly string[] | undefined {
+  const t = target.toLowerCase()
+  if (EXTENSION_GROUPS[t] !== undefined) return EXTENSION_GROUPS[t]
+  if (EXTENSIONS[t] !== undefined) return [t]
+  const byTool = TOOL_TO_EXTENSION[t]
+  if (byTool !== undefined) return [byTool]
+  return undefined
+}
+
+function renderExtensionsStatus(loaded: readonly string[]): string {
+  const parts = Object.keys(EXTENSIONS).map(id => `${loaded.includes(id) ? '[x]' : '[ ]'} ${id}`)
+  return `**Extensions:** ${parts.join('  ')}\nGroups: ${Object.keys(EXTENSION_GROUPS).join(', ')}`
+}
+
+async function runExtensionCommand(
+  loader: ExtensionLoader,
+  sub: string,
+  target: string,
+): Promise<CommandResult> {
+  if (sub === 'ext') {
+    const lines = ['**Extensions (loaded after open, never at boot):**\n']
+    const loaded = loader.loadedIds()
+    for (const [id, def] of Object.entries(EXTENSIONS)) {
+      lines.push(`  ${loaded.includes(id) ? '[x]' : '[ ]'} ${id} — ${def.blurb}`)
+    }
+    lines.push('')
+    lines.push(`Groups: ${Object.keys(EXTENSION_GROUPS).join(', ')}`)
+    lines.push('Usage: `/plugins load <tela|navegador|desktop|jarvis|id>`, `/plugins unload <...>`')
+    return { kind: 'success', text: lines.join('\n') }
+  }
+  if (!target) {
+    return { kind: 'error', text: `Usage: /plugins ${sub} <tela|navegador|desktop|jarvis|extension-id>` }
+  }
+  const ids = resolveExtensionTargets(target)
+  if (ids === undefined) {
+    return { kind: 'error', text: `Unknown extension "${target}". Run /plugins ext to see available ones.` }
+  }
+  const lines = sub === 'load' ? await loader.load(ids) : await loader.unload(ids)
   return { kind: 'success', text: lines.join('\n') }
 }
 
@@ -254,38 +518,58 @@ function renderList(config: PluginsConfig): CommandResult {
  * disabled tools at execution time, and a `system-prompt/assemble`
  * waterfall listener that strips disabled tool schemas from the prompt
  * so they never reach the LLM — saving tokens and reducing API overload.
+ * The same command also mounts the Jarvis extensions on demand
+ * (`load`/`unload`), each in its own isolated fiber.
  */
 export function apply(ctx: Context): void {
+  // Live tool state: mutated by disable/enable/preset/reset/load immediately
+  // (no restart needed); persisted to ~/.dsh/plugins.json on every change.
+  const disabled = new Set(loadConfig().disabled)
+  const loader = createExtensionLoader(ctx, disabled)
+
+  // Tools contributed by loaded extensions bypass the disabled set: loading
+  // means wanting, even if a preset disabled them at boot.
+  const loadedTools = (): Set<string> => {
+    const names = new Set<string>()
+    for (const id of loader.loadedIds()) {
+      const def = EXTENSIONS[id]
+      if (def !== undefined) for (const tool of def.tools) names.add(tool)
+    }
+    return names
+  }
+
   // Register the command
   ctx.commands.register({
     name: 'plugins',
-    description: 'enable or disable tools to reduce prompt size for rate-limited APIs',
-    input: { hint: '[list|enable <tool>|disable <tool>|preset <light|standard|minimal>|reset]' },
-    handler: (invocation: CommandInvocation): CommandResult =>
-      handlePlugins(invocation.rawInput),
+    description: 'enable/disable tools to reduce prompt size; load/unload Jarvis extensions (tela, navegador, desktop) after open',
+    input: { hint: '[list|ext|enable <tool>|disable <tool>|load <tela|navegador|desktop|jarvis|id>|unload <...>|preset <light|standard|minimal>|reset]' },
+    handler: (invocation: CommandInvocation): CommandResult | Promise<CommandResult> => {
+      const sub = (invocation.rawInput.trim().split(/\s+/)[0] ?? '').toLowerCase()
+      if (sub === 'load' || sub === 'unload' || sub === 'ext' || sub === 'extensions') {
+        const target = (invocation.rawInput.trim().split(/\s+/)[1] ?? '').toLowerCase()
+        return runExtensionCommand(loader, sub, target)
+      }
+      return handlePlugins(invocation.rawInput, { disabled, loaded: loader.loadedIds() })
+    },
   })
 
-  const config = loadConfig()
-  const disabledSet = new Set(config.disabled)
-
-  // 1) Guard: block execution of disabled tools
-  if (disabledSet.size > 0) {
-    const guard: ToolGuard = (exec) => {
-      if (disabledSet.has(exec.name)) {
-        return `Tool "${exec.name}" is disabled. Use /plugins enable ${exec.name} to re-enable it.`
-      }
-      return undefined
+  // 1) Guard: block execution of disabled tools (loaded extensions win).
+  const guard: ToolGuard = (exec) => {
+    if (loadedTools().has(exec.name)) return undefined
+    if (disabled.has(exec.name)) {
+      return `Tool "${exec.name}" is disabled. Use /plugins enable ${exec.name} to re-enable it.`
     }
-    ctx.tools.guard(guard)
+    return undefined
   }
+  ctx.tools.guard(guard)
 
   // 2) System prompt: strip disabled tool schemas before they reach the LLM.
   //    This is the real token saver — without it, ~50K chars of unused schemas
   //    inflate every API request and trigger DeepSeek Free rate limits.
-  if (disabledSet.size > 0) {
-    ctx.on('system-prompt/assemble', async (assembly, _context, next) => {
-      assembly.tools = assembly.tools.filter(tool => !disabledSet.has(tool.name))
-      return next()
-    })
-  }
+  //    Runs on every assembly, so disable/enable/load apply immediately.
+  ctx.on('system-prompt/assemble', async (assembly, _context, next) => {
+    const skip = loadedTools()
+    assembly.tools = assembly.tools.filter(tool => !disabled.has(tool.name) || skip.has(tool.name))
+    return next()
+  })
 }

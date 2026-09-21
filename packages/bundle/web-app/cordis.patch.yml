@@ -439,39 +439,20 @@
     - id: mcp-auto
       name: '@deepseek-ai/dsh-mcp-auto'
 
-- insert:
-    - id: screen-capture
-      name: '@deepseek-ai/dsh-screen-capture'
-
-    - id: tool-screen
-      name: '@deepseek-ai/dsh-tool-screen'
-
-    - id: browser
-      name: '@deepseek-ai/dsh-browser'
-
-    - id: tool-browser
-      name: '@deepseek-ai/dsh-tool-browser'
-
-    - id: tool-desktop-control
-      name: '@deepseek-ai/dsh-tool-desktop-control'
-
+# ── Jarvis extensions are NOT boot rows ─────────────────────────────────────
+#
+# The screen/browser/desktop extensions (services, model tools, widgets)
+# used to live here as inserts, and any one of them could fail the whole
+# boot. They no longer load at initialization: the core always opens
+# clean, and the user activates them afterwards via `/plugins load`
+# (isolated: one failing extension reports its own error and the app
+# keeps running). The ui-screen-picker widget stays: it is self-contained
+# (slots+locale only) and never broke boot. The ui-browser-tab and
+# ui-screen-status widgets stay parked in-tree until a host Remote API
+# exposes their services browser-side (see TODO in command-plugins).
 - insert:
     - id: ui-screen-picker
       name: '@deepseek-ai/dsh-client-ui-screen-picker'
-
-    # TODO: re-enable after a host Remote API exposes the browser and
-    # screenCapture services to the browser half. These two widgets inject
-    # host-only services in their browser fibers, so they stay pending
-    # forever ('aguardando serviço') and trip the web startup plugin
-    # check. The model tools (site_explorer, screen_capture) keep working
-    # host-side regardless; only these two browser widgets are parked.
-    - id: ui-browser-tab
-      name: '@deepseek-ai/dsh-client-ui-browser-tab'
-      disabled: true
-
-    - id: ui-screen-status
-      name: '@deepseek-ai/dsh-client-ui-screen-status'
-      disabled: true
 
 # The preset roster. `config/agent-presets/` ships with the deployment and is
 # read-only (its entries carry `system` trust); `$DSH_HOME/.agent-presets` is

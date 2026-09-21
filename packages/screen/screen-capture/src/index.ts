@@ -32,7 +32,9 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-export const name = 'screen-capture'
-export function apply(ctx: Context): void {
-  ctx.provide('screenCapture', new ScreenCaptureService(ctx))
-}
+/**
+ * Service plugin entry. The default-exported Service self-provides
+ * `screenCapture` from its constructor — no manual `ctx.provide()` in an
+ * apply body (that registers the same name twice and fails boot).
+ */
+export default ScreenCaptureService

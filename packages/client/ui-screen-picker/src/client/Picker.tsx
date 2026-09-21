@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
+import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
 
-export function ScreenPicker() {
+export function ScreenPicker({ t }: PropsLocale<'screenPicker'>) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [sharing, setSharing] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -23,7 +24,9 @@ export function ScreenPicker() {
 
   return (
     <div>
-      <button type="button" onClick={() => { void pick() }}>{sharing ? 'Compartilhando aba — clique para trocar' : 'Compartilhar aba (Site Explorer)'}</button>
+      <button type="button" onClick={() => { void pick() }}>
+        {sharing ? t('sharing') : t('share')}
+      </button>
       {error !== null && <div role="alert">{error}</div>}
       <video ref={videoRef} autoPlay muted playsInline style={{ display: sharing ? 'block' : 'none', maxWidth: '100%', borderRadius: 8 }} />
     </div>

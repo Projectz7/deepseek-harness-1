@@ -1,0 +1,122 @@
+.container {
+  padding: 12px;
+  border: 1px solid var(--dsw-border);
+  border-radius: 8px;
+  background: var(--dsw-surface);
+}
+
+.title {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--dsw-text-primary);
+}
+
+.attached {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tabInfo {
+  flex: 1;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--dsw-text-secondary);
+  margin-right: 8px;
+}
+
+.url {
+  font-size: 12px;
+  color: var(--dsw-text-secondary);
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
+.disconnected {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 13px;
+  color: var(--dsw-text-secondary);
+}
+
+.inputGroup {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--dsw-border);
+  border-radius: 6px;
+  background: var(--dsw-background);
+  color: var(--dsw-text-primary);
+  font-size: 13px;
+  font-family: monospace;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--dsw-primary);
+  box-shadow: 0 0 0 2px var(--dsw-primary-alpha);
+}
+
+.button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.connect {
+  background: var(--dsw-primary);
+  color: var(--dsw-on-primary);
+}
+
+.connect:hover:not(:disabled) {
+  background: var(--dsw-primary-hover);
+}
+
+.detach {
+  background: var(--dsw-error);
+  color: var(--dsw-on-error);
+}
+
+.detach:hover:not(:disabled) {
+  background: var(--dsw-error-hover);
+}
+
+.error {
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--dsw-error-alpha);
+  color: var(--dsw-error);
+  font-size: 12px;
+}
+
+.connecting {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--dsw-text-secondary);
+}

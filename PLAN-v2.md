@@ -13,7 +13,7 @@ Objetivo v2: chat com upload, tela compartilhada por aba (estilo chamada de víde
 - [x] Etapa 10 — Desktop: Assumir teclado/mouse — `packages/desktop/tool-desktop-control` (`click`, `type`, `scroll`, `shortcut`) via `nut.js`/`win32 SendInput`; gated por `sandbox.mode=disabled` + `auto-approve` + audit `approval/asked`; precisa consentimento explícito por sessão
 - [x] Etapa 11 — Browser: Navegar com credenciais em aba selecionada — `packages/browser/browser` + `packages/browser/tool-browser` (Playwright CDP attach em aba já aberta ou nova): `navigate`, `click`, `fill`, `snapshot` (AX tree), `console` (logs), `evaluate`, `source` (vasculhar código quando liberado/frágil); credenciais via `credentials` seam, sem logar senha; suporta console, network, DOM e view-source
 
-Dependências: 8?9?10?11 (8 isola host/client, 9 isola screen, 10 isola desktop, 11 isola browser+Playwright; cada etapa max 2 arquivos por micro-tarefa, teste do pacote afetado + `tsc -b`)
+Dependências: 8?9?10?11 concluídas (scaffold + CDP real) — próximo: testes e2e + polish
 
 ## Fluxo aba selecionável (como vídeo-chamada)
 

@@ -439,6 +439,32 @@
     - id: mcp-auto
       name: '@deepseek-ai/dsh-mcp-auto'
 
+- insert:
+    - id: screen-capture
+      name: '@deepseek-ai/dsh-screen-capture'
+
+    - id: tool-screen
+      name: '@deepseek-ai/dsh-tool-screen'
+
+    - id: browser
+      name: '@deepseek-ai/dsh-browser'
+
+    - id: tool-browser
+      name: '@deepseek-ai/dsh-tool-browser'
+
+    - id: tool-desktop-control
+      name: '@deepseek-ai/dsh-tool-desktop-control'
+
+- insert:
+    - id: ui-screen-picker
+      name: '@deepseek-ai/dsh-client-ui-screen-picker'
+
+    - id: ui-browser-tab
+      name: '@deepseek-ai/dsh-client-ui-browser-tab'
+
+    - id: ui-screen-status
+      name: '@deepseek-ai/dsh-client-ui-screen-status'
+
 # The preset roster. `config/agent-presets/` ships with the deployment and is
 # read-only (its entries carry `system` trust); `$DSH_HOME/.agent-presets` is
 # where a person — or an agent — authors their own, and carries the same trust

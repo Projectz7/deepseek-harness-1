@@ -51,7 +51,9 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
-export const name = 'browser'
-export function apply(ctx: Context): void {
-  ctx.provide('browser', new BrowserService(ctx))
-}
+/**
+ * Service plugin entry. The default-exported Service self-provides
+ * `browser` from its constructor — no manual `ctx.provide()` in an
+ * apply body (that registers the same name twice and fails boot).
+ */
+export default BrowserService

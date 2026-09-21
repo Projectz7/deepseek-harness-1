@@ -7,7 +7,7 @@
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
-  "exports": { ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" }, "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client/index.js" }, "./package.json": "./package.json" },
+  "exports": { ".": { "types": "./lib/types/index.d.ts", "default": "./lib/index.js" }, "./client": { "types": "./lib/types/client/index.d.ts", "default": "./lib/client.js" }, "./invariant": { "types": "./lib/types/invariant.d.ts", "default": "./lib/invariant.js" }, "./src/*": "./src/*", "./package.json": "./package.json" },
   "files": ["lib"],
   "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run", "typecheck": "tsc -b" },
   "dependencies": {

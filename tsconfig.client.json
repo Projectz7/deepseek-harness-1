@@ -94,6 +94,8 @@
     { "path": "./packages/client/ui-settings-models" },
     { "path": "./packages/client/ui-settings-plugin-inventory" },
     { "path": "./packages/client/ui-screen-picker" },
+    { "path": "./packages/client/ui-browser-tab" },
+    { "path": "./packages/client/ui-screen-status" },
     { "path": "./packages/client/locale" },
     { "path": "./packages/client/ui-renderer" },
     { "path": "./packages/client/web" },

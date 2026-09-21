@@ -24,6 +24,9 @@
       "path": "../ui-slots"
     },
     {
+      "path": "../../browser/browser"
+    },
+    {
       "path": "../../runtime-diagnostics/invariants"
     }
   ]

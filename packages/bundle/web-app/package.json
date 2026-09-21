@@ -112,6 +112,7 @@
     "@deepseek-ai/dsh-workspace": "workspace:^",
     "@deepseek-ai/dsh-command-memory": "workspace:^",
     "@deepseek-ai/dsh-command-plugins": "workspace:^",
+    "@deepseek-ai/dsh-client-ui-voice": "workspace:^",
     "@deepseek-ai/dsh-mcp-auto": "workspace:^",
     "@deepseek-ai/dsh-screen-capture": "workspace:^",
     "@deepseek-ai/dsh-tool-screen": "workspace:^",

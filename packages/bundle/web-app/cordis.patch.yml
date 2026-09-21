@@ -454,6 +454,9 @@
     - id: ui-screen-picker
       name: '@deepseek-ai/dsh-client-ui-screen-picker'
 
+    - id: ui-voice
+      name: '@deepseek-ai/dsh-client-ui-voice'
+
 # The preset roster. `config/agent-presets/` ships with the deployment and is
 # read-only (its entries carry `system` trust); `$DSH_HOME/.agent-presets` is
 # where a person — or an agent — authors their own, and carries the same trust

@@ -231,6 +231,7 @@
       "@deepseek-ai/dsh-client-ui-settings-general": ["./packages/client/ui-settings-general/src"],
       "@deepseek-ai/dsh-client-ui-settings-models": ["./packages/client/ui-settings-models/src"],
       "@deepseek-ai/dsh-client-ui-settings-plugin-inventory": ["./packages/client/ui-settings-plugin-inventory/src"],
+      "@deepseek-ai/dsh-client-ui-voice": ["./packages/client/ui-voice/src"],
       "@deepseek-ai/dsh-client-ui-screen-picker": ["./packages/client/ui-screen-picker/src"],
       "@deepseek-ai/dsh-client-ui-browser-tab": ["./packages/client/ui-browser-tab/src"],
       "@deepseek-ai/dsh-client-ui-screen-status": ["./packages/client/ui-screen-status/src"],

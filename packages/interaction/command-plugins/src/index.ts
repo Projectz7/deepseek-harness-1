@@ -365,12 +365,26 @@ interface ExtensionLoader {
  */
 function createExtensionLoader(ctx: Context, disabled: Set<string>): ExtensionLoader {
   const fibers = new Map<string, LoadedFiber>()
+  const inflight = new Map<string, Promise<boolean>>()
 
   async function loadOne(id: string, lines: string[]): Promise<boolean> {
     if (fibers.has(id)) {
       lines.push(`- ${id}: already loaded.`)
       return true
     }
+    const running = inflight.get(id)
+    if (running !== undefined) return running
+    const task = mountOne(id, lines)
+    inflight.set(id, task)
+    try {
+      return await task
+    } finally {
+      inflight.delete(id)
+    }
+  }
+
+  async function mountOne(id: string, lines: string[]): Promise<boolean> {
+    if (fibers.has(id)) return true
     const def = EXTENSIONS[id]
     if (def === undefined) {
       lines.push(`- ${id}: unknown extension.`)
@@ -563,13 +577,16 @@ export function apply(ctx: Context): void {
   }
   ctx.tools.guard(guard)
 
-  // 2) System prompt: strip disabled tool schemas before they reach the LLM.
-  //    This is the real token saver — without it, ~50K chars of unused schemas
-  //    inflate every API request and trigger DeepSeek Free rate limits.
-  //    Runs on every assembly, so disable/enable/load apply immediately.
-  ctx.on('system-prompt/assemble', async (assembly, _context, next) => {
-    const skip = loadedTools()
-    assembly.tools = assembly.tools.filter(tool => !disabled.has(tool.name) || skip.has(tool.name))
-    return next()
-  })
+  // 3) Super Autônomo: when a session on that preset is created, mount the
+  //    Jarvis senses afterwards (never at boot). Fire-and-forget with its own
+  //    catch: a failure is logged, the session keeps running.
+  ctx.on('session/created', (session) => {
+    if (session?.header?.agentPreset !== 'super-autonomous') return
+    const senses = EXTENSION_GROUPS.jarvis
+    if (senses === undefined) return
+    void loader.load(senses).then(
+      (lines) => { ctx.logger.info(`super-autonomous senses: ${lines.join(' | ')}`) },
+      (error: unknown) => { ctx.logger.warn(`super-autonomous senses failed: ${shortError(error)}`) },
+    )
+  }, { global: true })
 }

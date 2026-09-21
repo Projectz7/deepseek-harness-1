@@ -459,11 +459,19 @@
     - id: ui-screen-picker
       name: '@deepseek-ai/dsh-client-ui-screen-picker'
 
+    # TODO: re-enable after a host Remote API exposes the browser and
+    # screenCapture services to the browser half. These two widgets inject
+    # host-only services in their browser fibers, so they stay pending
+    # forever ('aguardando serviço') and trip the web startup plugin
+    # check. The model tools (site_explorer, screen_capture) keep working
+    # host-side regardless; only these two browser widgets are parked.
     - id: ui-browser-tab
       name: '@deepseek-ai/dsh-client-ui-browser-tab'
+      disabled: true
 
     - id: ui-screen-status
       name: '@deepseek-ai/dsh-client-ui-screen-status'
+      disabled: true
 
 # The preset roster. `config/agent-presets/` ships with the deployment and is
 # read-only (its entries carry `system` trust); `$DSH_HOME/.agent-presets` is

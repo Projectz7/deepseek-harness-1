@@ -446,10 +446,12 @@
 # boot. They no longer load at initialization: the core always opens
 # clean, and the user activates them afterwards via `/plugins load`
 # (isolated: one failing extension reports its own error and the app
-# keeps running). The ui-screen-picker widget stays: it is self-contained
-# (slots+locale only) and never broke boot. The ui-browser-tab and
-# ui-screen-status widgets stay parked in-tree until a host Remote API
-# exposes their services browser-side (see TODO in command-plugins).
+# keeps running). ui-screen-status and ui-browser-tab stay OUT of the
+# roster too: they inject the host-only `screenCapture`/`browser`
+# services, no client-side provider exists, so as boot rows they could
+# only sit pending and fail the web boot. Only the self-contained
+# widgets (ui-screen-picker, ui-voice: slots+locale+framework hooks,
+# browser-native APIs) boot.
 - insert:
     - id: ui-screen-picker
       name: '@deepseek-ai/dsh-client-ui-screen-picker'

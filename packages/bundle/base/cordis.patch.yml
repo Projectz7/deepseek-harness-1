@@ -316,6 +316,14 @@
         provider: spawn
         toolName: subagent
         backgroundMode: continuable
+        # ── CÉREBRO PESADO (trabalho profundo) ────────────────────────────────
+        # Sobrepondo o agentOptions do subagent ao modelo do pai, o "subagent"
+        # roda no GLM 5.3 (NVIDIA NIM) enquanto a conversa segue no nemotron
+        # (agent-default-model em ~/.dsh/settings.yaml). A chave resolve via
+        # ~/.dsh/.credentials.yaml (NVIDIA_API_KEY) — zero código, só config.
+        agentOptions:
+          provider: nvidia
+          model: z-ai/glm-5.3
 
     # Fork stays one-shot: a continuable child's `report` tool and prompt
     # section precede the inherited history a fork exists to reuse; one-shot

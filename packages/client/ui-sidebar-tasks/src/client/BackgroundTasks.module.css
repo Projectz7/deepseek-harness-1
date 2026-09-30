@@ -1,0 +1,121 @@
+.section {
+  border-top: 1px solid var(--dsw-alias-outline-secondary, #e0e0e0);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dsw-alias-label-secondary, #666);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.header:hover {
+  color: var(--dsw-alias-label-primary, #333);
+}
+
+.headerLabel {
+  flex: 1;
+  text-align: left;
+}
+
+.runningBadge {
+  background: var(--dsw-alias-fill-primary, #4a90d9);
+  color: white;
+  border-radius: 50%;
+  min-width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+.countBadge {
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-size: 10px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 4px 0;
+  font-size: 11px;
+}
+
+.rowContent {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.rowLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--dsw-alias-label-primary, #333);
+}
+
+.rowMeta {
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-size: 10px;
+}
+
+.empty {
+  color: var(--dsw-alias-label-tertiary, #999);
+  font-size: 10px;
+  padding: 8px 0;
+  line-height: 1.4;
+}
+
+.railButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  width: 36px;
+  height: 36px;
+  margin: 2px auto;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.railBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--dsw-alias-fill-primary, #4a90d9);
+  color: white;
+  border-radius: 50%;
+  min-width: 14px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: 700;
+}

@@ -44,6 +44,12 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * package's 'sidebar' entry; each action receives only the column state.
      */
     'sidebar.footer.action': { kind: 'list'; scope: 'root'; owner: SidebarFooterActionOwnerProps }
+    /**
+     * Background tasks panel: heavy-work (subagent) tasks running on the
+     * delegation model, rendered between the workspace list and the foot.
+     * Declared by this package's 'sidebar' entry; ui-sidebar-tasks registers.
+     */
+    'sidebar.background': { kind: 'single'; scope: 'root'; owner: SidebarBackgroundOwnerProps }
   }
 }
 
@@ -85,6 +91,14 @@ export interface SidebarFooterActionOwnerProps {
   wide: boolean
 }
 
+/** Owner share of the background-tasks section: same as the browser hole. */
+export interface SidebarBackgroundOwnerProps {
+  /** Shell fold-state output: wide renders the full panel, rail the icon. */
+  wide: boolean
+  /** Rail icons request expansion. */
+  expandSidebar: () => void
+}
+
 /**
  * Registrant-private injected share (arrives via the register inject
  * factory). The shell keeps only its own controls: starting a Session from
@@ -112,6 +126,7 @@ export type SidebarRootComponentProps =
     | 'sidebar.brand.mark'
     | 'sidebar.brand.name'
     | 'sidebar.workspaces'
+    | 'sidebar.background'
     | 'sidebar.settings'
     | 'sidebar.footer.action'
   >

@@ -196,6 +196,15 @@ export function SidebarRoot({
         })}
       </div>
 
+      {/* Background tasks panel: heavy-work (subagent) tasks below the
+          session list, above the footer — same fold semantics. */}
+      <div className={css.regionArea}>
+        {renderSlot('sidebar.background', {
+          wide,
+          expandSidebar: () => { if (collapsed) toggleSidebar() },
+        })}
+      </div>
+
       {/* Footer actions stack above Settings in both sidebar widths. */}
       <div className={css.footArea}>
         <div className={css.footerActions}>

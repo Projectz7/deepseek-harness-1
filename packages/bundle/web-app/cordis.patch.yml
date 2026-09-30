@@ -258,6 +258,10 @@
     - id: ui-jobs
       name: '@deepseek-ai/dsh-client-ui-jobs'
 
+    # Sidebar background tasks: heavy-work (subagent) panel in the sidebar.
+    - id: ui-sidebar-tasks
+      name: '@deepseek-ai/dsh-client-ui-sidebar-tasks'
+
     # Goal surface: GoalBar in the input dock over the goal session projection.
     - id: ui-goal
       name: '@deepseek-ai/dsh-client-ui-goal'

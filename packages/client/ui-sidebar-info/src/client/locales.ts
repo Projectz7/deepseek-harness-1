@@ -7,7 +7,7 @@ export const en = {
   'status': 'Status',
   'online': 'online',
   'offline': 'offline',
-  'cwd': 'Directory',
+  'cwd': 'Dir',
 } as const
 
 export type SidebarInfoKey = keyof typeof en

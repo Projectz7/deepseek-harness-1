@@ -1,6 +1,6 @@
-import { clientBundle } from '../../tsdown.client.ts'
+import { clientBundle } from '../tsdown.client.ts'
 
-export default clientBundle('ui-sidebar-tasks', [
+export default clientBundle('@deepseek-ai/dsh-client-ui-sidebar-tasks', [
   'lib/types/index.js',
   'lib/types/invariant.js',
 ])

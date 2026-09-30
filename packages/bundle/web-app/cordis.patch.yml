@@ -275,6 +275,10 @@
     - id: ui-listen
       name: '@deepseek-ai/dsh-client-ui-listen'
 
+    # Sidebar info bar: connection status + session info in the footer.
+    - id: ui-sidebar-info
+      name: '@deepseek-ai/dsh-client-ui-sidebar-info'
+
     # Model selection: the /model popupSelect + composer seat over session.models.
     - id: ui-model-selection
       name: '@deepseek-ai/dsh-client-ui-model-selection'

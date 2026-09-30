@@ -1,0 +1,25 @@
+.listenButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.6;
+  transition: opacity 120ms ease;
+}
+
+.listenButton:hover {
+  opacity: 1;
+}
+
+.listenButton.speaking {
+  opacity: 1;
+  color: var(--dsw-alias-fill-primary, #4a90d9);
+}
+
+.icon {
+  display: block;
+}

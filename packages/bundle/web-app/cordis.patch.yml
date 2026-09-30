@@ -271,6 +271,10 @@
     - id: ui-message-feedback
       name: '@deepseek-ai/dsh-client-ui-message-feedback'
 
+    # Listen: play/stop button reading the assistant reply aloud (browser TTS).
+    - id: ui-listen
+      name: '@deepseek-ai/dsh-client-ui-listen'
+
     # Model selection: the /model popupSelect + composer seat over session.models.
     - id: ui-model-selection
       name: '@deepseek-ai/dsh-client-ui-model-selection'
